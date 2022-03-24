@@ -1,34 +1,59 @@
-import { take, takeEvery, takeLatest, put, call, fork, spawn, select } from 'redux-saga/effects'
+import { take, takeEvery, takeLatest, put, call, fork, spawn, select, all, delay, apply, cancel , actionChannel} from 'redux-saga/effects'
+import loadBasicData from './initialSagas'
+import pageLoaderSaga from './pageLoaderSaga'
 
-async function swapiGet(pattern) {
-    const request = await fetch(`https://swapi.dev/api/${pattern}/`)
-    const data = await request.json()
-    return data
+export function* fetchPlanets(signal) {
+    console.log('LOAD_SOME_DATA starts')
+
+    const response = yield call(
+        fetch,
+        'https://swapi.dev/api/planets/',
+        // { signal }
+    )
+    const data = yield apply(response, response.json)
+
+    console.log('LOAD_SOME_DATA completed', data);
+
 }
 
-export function* loadPeople() {
-    const people = yield call(swapiGet, 'people') //call for async 
-    yield put({ type: 'SET_PEOPLE', payload: people.results })
-    return people
-}
-export function* loadPlanets() {
-    const planets = yield call(swapiGet, 'planets') //call for async     
-    yield put({ type: 'SET_PLANETS', payload: planets.results })
-}
+export function* loadOnAction() {
+    const channel = yield actionChannel('LOAD_SOME_DATA') //buffer actions into queue
+    while (true) {
+        yield take(channel)
+        yield call(fetchPlanets)
+    }
 
-export function* workerSaga() {
-    yield call(loadPeople)
-    yield call(loadPlanets)
-
-    const store = yield select(s => s)
-    console.log(store);
-}
-
-export function* watchLoadDataSaga() {
-    yield takeEvery('LOAD_DATA', workerSaga)
-
+    // yield takeLatest('LOAD_SOME_DATA', fetchPlanets)
+    // let task
+    // let abortController = new AbortController()
+    // while (true) {
+    //     yield take('LOAD_SOME_DATA');
+    //     if (task) {
+    //         abortController.abort()
+    //         yield cancel(task)
+    //         abortController = new AbortController()
+    //     }
+    //     task=yield fork(fetchPlanets, abortController.signal)
+    // }
 }
 
 export default function* rootSaga() {
-    yield fork(watchLoadDataSaga)
+    const sagas = [
+        // loadBasicData,
+        // pageLoaderSaga,
+        loadOnAction
+    ]
+    const retrySagas = yield sagas.map(saga => {
+        return spawn(function* () {
+            while (true) {
+                try {
+                    yield call(saga)
+                    break
+                } catch (error) {
+                    console.log(error);
+                }
+            }
+        })
+    })
+    yield all(retrySagas)
 }
