@@ -1,8 +1,9 @@
 import React from "react";
 import { connect } from "react-redux";
-import {createPost} from 'redux/actions'
+import { createPost, showAlert } from 'redux/actions'
+import Alert from "./Alert";
 
- class PostForm extends React.Component {
+class PostForm extends React.Component {
     constructor(props) {
         super(props)
         this.state = {
@@ -14,14 +15,14 @@ import {createPost} from 'redux/actions'
         e.preventDefault()
         const { title } = this.state
         if (!title.trim()) {
-            return
+            return this.props.showAlert('Name cannot be empty')
         }
         const newPost = {
             title, id: Date.now().toString()
         }
         console.log(newPost);
         this.props.createPost(newPost)
-        this.setState({title:''})
+        this.setState({ title: '' })
     }
     changeInputHandler = (e) => {
         e.persist()
@@ -31,6 +32,7 @@ import {createPost} from 'redux/actions'
     render() {
         return (
             <form onSubmit={this.submitHandler}>
+                {this.props.alert && <Alert text={this.props.alert} />}
                 <div className="mb-3">
                     <label htmlFor="exampleInputEmail1" className="form-label">Post title</label>
                     <input
@@ -49,7 +51,11 @@ import {createPost} from 'redux/actions'
 }
 
 const mapDispatchToProps = {
-    createPost
+    createPost, showAlert
 }
 
-export default connect(null, mapDispatchToProps)(PostForm)
+const mapStateToProps = state => ({
+    alert: state.app.alert
+})
+
+export default connect(mapStateToProps, mapDispatchToProps)(PostForm)
