@@ -10,7 +10,7 @@ import Blog from './pages/Blog';
 import NotFound from './pages/NotFound';
 import { history } from './redux/reducers';
 import { ConnectedRouter } from 'connected-react-router';
-
+//test
 ReactDOM.render(
     <Provider store={store}>
       <ConnectedRouter history={history}>
